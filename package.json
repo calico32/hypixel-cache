@@ -1,7 +1,7 @@
 {
   "name": "hypixel-cache",
   "version": "1.0.0",
-  "types": "src/types.d.ts",
+  "types": "types.d.ts",
   "files": [
     "types.d.ts"
   ],
