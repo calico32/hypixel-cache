@@ -1,0 +1,11 @@
+{
+  "name": "hypixel-cache",
+  "version": "1.0.0",
+  "types": "src/types.d.ts",
+  "files": [
+    "types.d.ts"
+  ],
+  "dependencies": {
+    "hypixel-types": "https://github.com/wiisportsresort/hypixel-types#839190e9cbffeb7bb846fd5e414f36a1554ead4c"
+  }
+}
