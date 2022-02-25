@@ -1,0 +1,3 @@
+# hypixel-cache
+
+thing
