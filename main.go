@@ -18,10 +18,16 @@ func main() {
 	}
 
 	r := gin.Default()
-	r.GET("/", func(c *gin.Context) {
-		c.String(200, "OK")
+
+	r.TrustedPlatform = gin.PlatformCloudflare
+	r.SetTrustedProxies([]string{"172.0.0.1/16"})
+
+	r.Use(cors)
+
+	r.GET("/:type/:identifier", responseTimeStart, ensureAuthenticated, findCachedPlayer, fetchFromApi)
+	r.Use(func(c *gin.Context) {
+		c.JSON(404, NewFailure("not found"))
 	})
-	r.GET("/:type/:identifier", ensureAuthenticated, findCachedPlayer, fetchFromApi)
 
 	r.Run()
 }

@@ -14,26 +14,31 @@ import (
 )
 
 func fetchFromApi(c *gin.Context) {
+	if c.Writer.Written() {
+		c.Next()
+		return
+	}
+
 	identifierType := c.Param("type")
 	identifier := c.Param("identifier")
 
 	var uuid string
 
 	if identifierType != "uuid" && identifierType != "name" {
-		c.AbortWithStatusJSON(400, NewFailure("Invalid identifier type"))
+		finish(c, 400, NewFailure("invalid identifier type"))
 		return
 	}
 
 	if identifierType == "uuid" {
 		if !uuidRegexp.MatchString(identifier) {
-			c.AbortWithStatusJSON(400, NewFailure("Invalid UUID"))
+			finish(c, 400, NewFailure("invalid uuid"))
 			return
 		}
 
 		uuid = identifier
 	} else if identifierType == "name" {
 		if !usernameRegexp.MatchString(identifier) {
-			c.AbortWithStatusJSON(400, NewFailure("Invalid username"))
+			finish(c, 400, NewFailure("invalid username"))
 			return
 		}
 
@@ -43,11 +48,11 @@ func fetchFromApi(c *gin.Context) {
 			profile, err := fetchProfile(strings.ToLower(identifier))
 			if err != nil {
 				if err.Error() == "user not found" {
-					c.AbortWithStatusJSON(200, NewSuccessNotFound(time.Now(), false))
+					finish(c, 200, NewSuccessNotFound(time.Now(), false))
 					return
 				}
 
-				c.AbortWithStatusJSON(500, NewFailure("Error fetching profile: "+err.Error()))
+				finish(c, 500, NewFailure("error fetching profile: "+err.Error()))
 				return
 			}
 
@@ -61,25 +66,19 @@ func fetchFromApi(c *gin.Context) {
 
 	res, err := http.Get(requestUrl)
 	if err != nil {
-		c.AbortWithStatusJSON(500, NewFailure("Error fetching player: "+err.Error()))
+		finish(c, 500, NewFailure("error fetching player: "+err.Error()))
 		return
 	}
 
 	if res.StatusCode == 429 {
-		c.AbortWithStatusJSON(429, NewFailure("Ratelimited, try again later"))
+		finish(c, 429, NewFailure("ratelimited, try again later"))
 		return
 	}
-
-	// body, err := io.ReadAll(res.Body)
-	// if err != nil {
-	// 	c.AbortWithStatusJSON(500, NewFailure("Error reading response body: "+err.Error()))
-	// 	return
-	// }
 
 	var response map[string]interface{}
 	err = json.NewDecoder(res.Body).Decode(&response)
 	if err != nil {
-		c.AbortWithStatusJSON(500, NewFailure("Error parsing response: "+err.Error()))
+		finish(c, 500, NewFailure("error parsing response: "+err.Error()))
 		return
 	}
 
@@ -89,7 +88,7 @@ func fetchFromApi(c *gin.Context) {
 			FetchedAt: time.Now(),
 		}
 		playerCache.Set(uuid, cached, cache.DefaultExpiration)
-		c.AbortWithStatusJSON(200, NewSuccessNotFound(cached.FetchedAt, false))
+		finish(c, 200, NewSuccessNotFound(cached.FetchedAt, false))
 		return
 	}
 
@@ -100,7 +99,7 @@ func fetchFromApi(c *gin.Context) {
 		FetchedAt: time.Now(),
 	}
 	playerCache.Set(uuid, cached, cache.DefaultExpiration)
-	c.AbortWithStatusJSON(200, NewSuccessPlayerFound(cached, false))
+	finish(c, 200, NewSuccessPlayerFound(cached, false))
 }
 
 func fetchProfile(username string) (profileResponse *ProfileResponse, err error) {

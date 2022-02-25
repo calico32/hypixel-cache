@@ -20,6 +20,11 @@ type CachedPlayer struct {
 }
 
 func findCachedPlayer(c *gin.Context) {
+	if c.Writer.Written() {
+		c.Next()
+		return
+	}
+
 	identifierType := c.Param("type")
 	identifier := c.Param("identifier")
 
@@ -27,13 +32,13 @@ func findCachedPlayer(c *gin.Context) {
 
 	if identifierType == "uuid" {
 		if !uuidRegexp.MatchString(identifier) {
-			c.AbortWithStatusJSON(400, NewFailure("Invalid UUID"))
+			finish(c, 400, NewFailure("invalid uuid"))
 			return
 		}
 		uuid = identifier
 	} else if identifierType == "name" {
 		if !usernameRegexp.MatchString(identifier) {
-			c.AbortWithStatusJSON(400, NewFailure("Invalid username"))
+			finish(c, 400, NewFailure("invalid username"))
 			return
 		}
 
@@ -44,7 +49,7 @@ func findCachedPlayer(c *gin.Context) {
 			return
 		}
 	} else {
-		c.AbortWithStatusJSON(400, NewFailure("Invalid identifier type"))
+		finish(c, 400, NewFailure("invalid identifier type"))
 
 		return
 	}
@@ -54,9 +59,9 @@ func findCachedPlayer(c *gin.Context) {
 	if cached, ok := playerCache.Get(uuid); ok {
 		cachedPlayer := cached.(CachedPlayer)
 		if cachedPlayer.Player != nil {
-			c.AbortWithStatusJSON(200, NewSuccessPlayerFound(cachedPlayer, true))
+			finish(c, 200, NewSuccessPlayerFound(cachedPlayer, true))
 		} else {
-			c.AbortWithStatusJSON(200, NewSuccessNotFound(cachedPlayer.FetchedAt, false))
+			finish(c, 200, NewSuccessNotFound(cachedPlayer.FetchedAt, false))
 		}
 
 	} else {
