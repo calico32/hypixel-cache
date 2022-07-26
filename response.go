@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
@@ -59,20 +60,23 @@ func cors(c *gin.Context) {
 	c.Header("Access-Control-Expose-Headers", "X-Response-Time")
 }
 
+var responseTimes = make(map[*http.Request]int64)
+
 func responseTimeStart(c *gin.Context) {
-	c.Header("X-Response-Start", strconv.FormatInt(time.Now().UnixMicro(), 10))
+	start := time.Now().UnixMicro()
+	responseTimes[c.Request] = start
 }
 
 func responseTimeEnd(c *gin.Context) {
 	now := time.Now().UnixMicro()
-	start, err := strconv.ParseInt(c.Writer.Header().Get("X-Response-Start"), 10, 64)
-	if err != nil {
-		panic("error parsing X-Response-Start:" + err.Error())
+	start, ok := responseTimes[c.Request]
+	if !ok {
+		return
 	}
 
+	delete(responseTimes, c.Request)
 	duration := now - start
 
-	c.Header("X-Response-Start", "")
 	c.Header("X-Response-Time", strconv.FormatInt(duration/1000, 10)+"ms")
 }
 

@@ -13,54 +13,24 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
+var apiResolvedUuids = make(map[*http.Request]string)
+
 func fetchFromApi(c *gin.Context) {
 	if c.Writer.Written() {
 		c.Next()
 		return
 	}
 
-	identifierType := c.Param("type")
-	identifier := c.Param("identifier")
-
-	var uuid string
-
-	if identifierType != "uuid" && identifierType != "name" {
-		finish(c, 400, NewFailure("invalid identifier type"))
-		return
-	}
-
-	if identifierType == "uuid" {
-		if !uuidRegexp.MatchString(identifier) {
-			finish(c, 400, NewFailure("invalid uuid"))
+	uuid, ok := apiResolvedUuids[c.Request]
+	delete(apiResolvedUuids, c.Request)
+	if !ok {
+		newUuid, err := getUuid(c.Param("type"), c.Param("identifier"))
+		if err != nil {
+			finish(c, 500, NewFailure(err.Error()))
 			return
 		}
-
-		uuid = identifier
-	} else if identifierType == "name" {
-		if !usernameRegexp.MatchString(identifier) {
-			finish(c, 400, NewFailure("invalid username"))
-			return
-		}
-
-		if cachedUuid, ok := uuidCache.Get(identifier); ok {
-			uuid = cachedUuid.(string)
-		} else {
-			profile, err := fetchProfile(strings.ToLower(identifier))
-			if err != nil {
-				if err.Error() == "user not found" {
-					finish(c, 200, NewSuccessNotFound(time.Now(), false))
-					return
-				}
-
-				finish(c, 500, NewFailure("error fetching profile: "+err.Error()))
-				return
-			}
-
-			uuid = *profile.Id
-		}
+		uuid = newUuid
 	}
-
-	uuid = removeDashes(uuid)
 
 	requestUrl := "https://api.hypixel.net/player?key=" + os.Getenv("HYPIXEL_API_KEY") + "&uuid=" + uuid
 
@@ -104,7 +74,7 @@ func fetchFromApi(c *gin.Context) {
 
 func fetchProfile(username string) (profileResponse *ProfileResponse, err error) {
 	if !usernameRegexp.MatchString(username) {
-		err = errors.New("invalid username")
+		err = errors.New(string(InvalidName))
 		return
 	}
 
@@ -115,7 +85,7 @@ func fetchProfile(username string) (profileResponse *ProfileResponse, err error)
 	}
 
 	if res.StatusCode == 404 || res.StatusCode == 204 {
-		err = errors.New("user not found")
+		err = errors.New(string(ProfileNotFound))
 		return
 	} else if res.StatusCode != 200 {
 		err = errors.New("error fetching profile: " + res.Status)

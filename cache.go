@@ -25,36 +25,10 @@ func findCachedPlayer(c *gin.Context) {
 		return
 	}
 
-	identifierType := c.Param("type")
-	identifier := c.Param("identifier")
-
-	var uuid string
-
-	if identifierType == "uuid" {
-		if !uuidRegexp.MatchString(identifier) {
-			finish(c, 400, NewFailure("invalid uuid"))
-			return
-		}
-		uuid = identifier
-	} else if identifierType == "name" {
-		if !usernameRegexp.MatchString(identifier) {
-			finish(c, 400, NewFailure("invalid username"))
-			return
-		}
-
-		if cachedUuid, ok := uuidCache.Get(identifier); ok {
-			uuid = cachedUuid.(string)
-		} else {
-			c.Next()
-			return
-		}
-	} else {
-		finish(c, 400, NewFailure("invalid identifier type"))
-
-		return
+	uuid, err := getUuid(c.Param("type"), c.Param("identifier"))
+	if err != nil {
+		finish(c, 500, NewFailure(err.Error()))
 	}
-
-	uuid = removeDashes(uuid)
 
 	if cached, ok := playerCache.Get(uuid); ok {
 		cachedPlayer := cached.(CachedPlayer)
@@ -63,8 +37,8 @@ func findCachedPlayer(c *gin.Context) {
 		} else {
 			finish(c, 200, NewSuccessNotFound(cachedPlayer.FetchedAt, false))
 		}
-
 	} else {
+		apiResolvedUuids[c.Request] = uuid
 		c.Next()
 	}
 }
