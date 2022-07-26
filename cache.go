@@ -25,9 +25,9 @@ func findCachedPlayer(c *gin.Context) {
 		return
 	}
 
-	uuid, err := getUuid(c.Param("type"), c.Param("identifier"))
+	uuid, err, code := getUuid(c.Param("type"), c.Param("identifier"))
 	if err != nil {
-		finish(c, 500, NewFailure(err.Error()))
+		finish(c, code, NewFailure(err.Error()))
 	}
 
 	if cached, ok := playerCache.Get(uuid); ok {

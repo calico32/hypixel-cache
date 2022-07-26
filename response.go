@@ -18,11 +18,16 @@ type successPlayerFound struct {
 }
 
 func NewSuccessPlayerFound(data CachedPlayer, cached bool) successPlayerFound {
+	username := data.Player["displayname"]
+	if username == nil {
+		username = ""
+	}
+
 	return successPlayerFound{
 		Success:   true,
 		FetchedAt: data.FetchedAt.Format(time.RFC3339),
 		Cached:    cached,
-		Username:  data.Player["displayname"].(string),
+		Username:  username.(string),
 		Uuid:      data.Player["uuid"].(string),
 		Player:    data.Player,
 	}

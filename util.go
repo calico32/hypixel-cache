@@ -20,24 +20,26 @@ func insertUuidDashes(s string) string {
 }
 
 const (
-	InvalidIdentType = "invalid identifier type"
+	InvalidIdentType = "invalid type"
 	InvalidUuid      = "invalid uuid"
 	InvalidName      = "invalid username"
 	ProfileNotFound  = "profile not found"
-	PlayerNotFound   = "player not found"
 	ServerError      = "server error"
 )
 
-func getUuid(typ string, ident string) (uuid string, err error) {
+func getUuid(typ string, ident string) (uuid string, err error, errorCode int) {
+	ident = strings.ToLower(ident)
 
 	if typ != "uuid" && typ != "name" {
 		err = errors.New(InvalidIdentType)
+		errorCode = 400
 		return
 	}
 
 	if typ == "uuid" {
 		if !uuidRegexp.MatchString(ident) {
 			err = errors.New(InvalidUuid)
+			errorCode = 400
 			return
 		}
 
@@ -45,15 +47,17 @@ func getUuid(typ string, ident string) (uuid string, err error) {
 	} else if typ == "name" {
 		if !usernameRegexp.MatchString(ident) {
 			err = errors.New(InvalidName)
+			errorCode = 400
 			return
 		}
 
 		if cachedUuid, ok := uuidCache.Get(ident); ok {
 			uuid = cachedUuid.(string)
 		} else {
-			profile, profileErr := fetchProfile(strings.ToLower(ident))
+			profile, profileErr, profileErrorCode := fetchProfile(strings.ToLower(ident))
 			if profileErr != nil {
 				err = profileErr
+				errorCode = profileErrorCode
 				return
 			}
 

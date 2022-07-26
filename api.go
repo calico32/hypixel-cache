@@ -24,9 +24,9 @@ func fetchFromApi(c *gin.Context) {
 	uuid, ok := apiResolvedUuids[c.Request]
 	delete(apiResolvedUuids, c.Request)
 	if !ok {
-		newUuid, err := getUuid(c.Param("type"), c.Param("identifier"))
+		newUuid, err, code := getUuid(c.Param("type"), c.Param("identifier"))
 		if err != nil {
-			finish(c, 500, NewFailure(err.Error()))
+			finish(c, code, NewFailure(err.Error()))
 			return
 		}
 		uuid = newUuid
@@ -72,9 +72,10 @@ func fetchFromApi(c *gin.Context) {
 	finish(c, 200, NewSuccessPlayerFound(cached, false))
 }
 
-func fetchProfile(username string) (profileResponse *ProfileResponse, err error) {
+func fetchProfile(username string) (profileResponse *ProfileResponse, err error, errorCode int) {
 	if !usernameRegexp.MatchString(username) {
 		err = errors.New(string(InvalidName))
+		errorCode = 400
 		return
 	}
 
@@ -86,19 +87,23 @@ func fetchProfile(username string) (profileResponse *ProfileResponse, err error)
 
 	if res.StatusCode == 404 || res.StatusCode == 204 {
 		err = errors.New(string(ProfileNotFound))
+		errorCode = 404
 		return
 	} else if res.StatusCode != 200 {
 		err = errors.New("error fetching profile: " + res.Status)
+		errorCode = 500
 		return
 	}
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
+		errorCode = 500
 		return
 	}
 
 	err = json.Unmarshal(body, &profileResponse)
 	if err != nil {
+		errorCode = 500
 		return
 	}
 
@@ -111,6 +116,7 @@ func fetchProfile(username string) (profileResponse *ProfileResponse, err error)
 		}
 
 		err = errors.New(message)
+		errorCode = 500
 		return
 	}
 
@@ -120,10 +126,10 @@ func fetchProfile(username string) (profileResponse *ProfileResponse, err error)
 
 	if !strings.EqualFold(username, *profileResponse.Name) {
 		err = errors.New("provided and resolved username mismatch: " + username + " != " + *profileResponse.Name)
+		errorCode = 500
 		return
 	}
 
 	uuidCache.Set(strings.ToLower(username), removeDashes(*profileResponse.Id), cache.DefaultExpiration)
-
 	return
 }
