@@ -4,3 +4,7 @@ node_modules
 /build
 *.http
 *.log
+
+.yarn/*
+!.yarn/releases
+!.yarn/plugins

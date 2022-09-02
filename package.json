@@ -6,6 +6,7 @@
     "types.d.ts"
   ],
   "dependencies": {
-    "hypixel-types": "https://github.com/wiisportsresort/hypixel-types#839190e9cbffeb7bb846fd5e414f36a1554ead4c"
-  }
+    "hypixel-types": "https://github.com/wiisportsresort/hypixel-types#bc679c2ac1c436a2b6131819e8ff22df7406b287"
+  },
+  "packageManager": "yarn@3.2.3"
 }
